@@ -170,26 +170,53 @@ app.get('/track', async (req, res) => {
             throw new Error('Missing required parameters');
         }
 
-        // Call the increment_visitors function and handle the response properly
-        const { data, error } = await supabase.rpc('increment_visitors', {
-            p_site_id: siteId,
-            p_client_id: clientId,
-            p_country: country
-        });
+        // First try to insert into visitor_logs directly
+        const { error: logError } = await supabase
+            .from('visitor_logs')
+            .upsert([{
+                site_id: siteId,
+                client_id: clientId,
+                country: country,
+                last_visit: new Date()
+            }], {
+                onConflict: 'site_id,client_id'
+            });
 
-        if (error) {
-            console.error('Supabase RPC error:', error);
-            throw error;
+        if (logError) {
+            console.error('Error inserting visitor log:', logError);
+            throw logError;
         }
 
-        // Force refresh the stats cache
-        await supabase.from('sites')
-            .select('total_visitors')
-            .eq('site_id', siteId)
-            .single();
+        // Then update the site stats
+        const { data: stats } = await supabase
+            .from('visitor_logs')
+            .select('client_id')
+            .eq('site_id', siteId);
+
+        const totalVisits = stats?.length || 0;
+        const uniqueVisitors = new Set(stats?.map(s => s.client_id)).size || 0;
+
+        const { error: updateError } = await supabase
+            .from('sites')
+            .update({
+                total_visitors: totalVisits,
+                unique_visitors: uniqueVisitors
+            })
+            .eq('site_id', siteId);
+
+        if (updateError) {
+            console.error('Error updating site stats:', updateError);
+            throw updateError;
+        }
 
         console.log(`Successfully tracked visit from ${country} for site ${siteId}`);
-        res.json({ success: true });
+        res.json({ 
+            success: true,
+            stats: {
+                total: totalVisits,
+                unique: uniqueVisitors
+            }
+        });
 
     } catch (error) {
         console.error('Error tracking visitor:', error);

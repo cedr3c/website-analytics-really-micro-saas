@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        #scriptTag {
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .site-stats {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .loading {
+            color: #666;
+            font-style: italic;
+        }
+        .visitor-count {
+            font-weight: bold;
+        }
+        .map-container {
+            height: 400px;
+            margin: 20px 0;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .country-tooltip {
+            padding: 10px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .country-flag {
+            margin-right: 5px;
+            vertical-align: middle;
+        }
+        .jvm-tooltip {
+            background-color: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            font-size: 13px;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+            max-width: 300px;
+        }
+        .jvectormap-tip {
+            background: white !important;
+            color: #333 !important;
+            padding: 10px !important;
+            border: 1px solid #ddd !important;
+            border-radius: 4px !important;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+        }
+        .jvectormap-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            touch-action: none;
+        }
+        .world-map {
+            width: 100%;
+            height: 100%;
+            background: #f8f9fa;
+        }
+        path {
+            fill: #e4e4e4;
+            stroke: #333;
+            stroke-width: 0.2;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        path:hover {
+            fill: #bbb;
+            stroke-width: 1;
+        }
+        .tooltip {
+            position: fixed;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            font-size: 14px;
+            border: 1px solid #ddd;
+            pointer-events: none;
+            display: none;
+            z-index: 1000;
+            min-width: 200px;
+        }
+        .tooltip-flag {
+            width: 24px;
+            height: 18px;
+            vertical-align: middle;
+            margin-right: 8px;
+            border: 1px solid #eee;
+        }
+        .tooltip-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        .tooltip-stat {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            color: #666;
+        }
+        .tooltip-stat b {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dashboard</h1>
+    <button onclick="createNewSite()">Create New Site</button>
+    <div id="sitesList"></div>
+
+    <script>
+        let sites = [];
+        let isLoading = true;
+
+        async function createNewSite() {
+            const response = await fetch('/new-site', { method: 'POST' });
+            const { siteId } = await response.json();
+            sites.push(siteId);
+            updateSitesList();
+        }
+
+        function generateScript(siteId) {
+            const scriptCode = `<script src="${window.location.origin}/tracker.js?siteId=${siteId}"><\/script>`;
+            document.getElementById(`script-${siteId}`).textContent = scriptCode;
+        }
+
+        async function fetchVisitorCounts() {
+            try {
+                const response = await fetch('/visitors');
+                if (!response.ok) throw new Error('Failed to fetch visitors');
+                
+                const counts = await response.json();
+                for (const [siteId, data] of Object.entries(counts)) {
+                    const totalElement = document.getElementById(`total-${siteId}`);
+                    const uniqueElement = document.getElementById(`unique-${siteId}`);
+                    if (totalElement && uniqueElement) {
+                        totalElement.textContent = data.total;
+                        uniqueElement.textContent = data.unique;
+                        totalElement.classList.remove('loading');
+                        uniqueElement.classList.remove('loading');
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching visitor counts:', error);
+                // Show error state instead of keeping loading
+                sites.forEach(siteId => {
+                    const totalElement = document.getElementById(`total-${siteId}`);
+                    const uniqueElement = document.getElementById(`unique-${siteId}`);
+                    if (totalElement && uniqueElement) {
+                        totalElement.textContent = '0';
+                        uniqueElement.textContent = '0';
+                        totalElement.classList.remove('loading');
+                        uniqueElement.classList.remove('loading');
+                    }
+                });
+            }
+        }
+
+        function updateSitesList() {
+            const sitesList = document.getElementById('sitesList');
+            sitesList.innerHTML = sites.map(siteId => `
+                <div class="site-stats">
+                    <h3>Site ID: ${siteId}</h3>
+                    <div>
+                        <div>Total Visitors: <span id="total-${siteId}" class="visitor-count loading">Loading...</span></div>
+                        <div>Unique Visitors: <span id="unique-${siteId}" class="visitor-count loading">Loading...</span></div>
+                    </div>
+                    <div class="map-container" id="map-${siteId}"></div>
+                    <button onclick="generateScript('${siteId}')">Generate Tracking Script</button>
+                    <div id="script-${siteId}"></div>
+                </div>
+            `).join('');
+            
+            sites.forEach(initializeMap);
+            fetchVisitorCounts();
+        }
+
+        async function initializeMap(siteId) {
+            try {
+                const response = await fetch(`/country-stats/${siteId}`);
+                const stats = await response.json();
+                
+                const mapElement = document.getElementById(`map-${siteId}`);
+                
+                // Create tooltip
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                document.body.appendChild(tooltip);
+
+                // Fetch and initialize map
+                const mapResponse = await fetch('/world.svg');
+                const mapSvg = await mapResponse.text();
+                mapElement.innerHTML = mapSvg;
+
+                const svg = mapElement.querySelector('svg');
+                svg.style.width = '100%';
+                svg.style.height = '100%';
+
+                // Calculate color intensities
+                const maxVisitors = Math.max(...Object.values(stats).map(s => s.total)) || 1;
+
+                // Add interactivity to countries
+                svg.querySelectorAll('path').forEach(path => {
+                    const code = path.id;
+                    if (!code || code.length !== 2) return; // Skip non-country paths
+                    
+                    const name = path.getAttribute('name');
+                    const data = stats[code] || { total: 0, unique: 0 };
+                    const intensity = data.total / maxVisitors;
+                    
+                    // Set country color based on visitors
+                    if (data.total > 0) {
+                        path.style.fill = `rgba(45, 168, 74, ${Math.max(0.2, intensity)})`;
+                    }
+
+                    path.addEventListener('mousemove', (e) => {
+                        const flag = `https://flagcdn.com/w40/${code.toLowerCase()}.png`;
+                        tooltip.innerHTML = `
+                            <div class="tooltip-title">
+                                <img src="${flag}" class="tooltip-flag" alt="${name} flag">
+                                ${name}
+                            </div>
+                            <div class="tooltip-stat">
+                                <span>Total Visitors:</span>
+                                <b>${data.total.toLocaleString()}</b>
+                            </div>
+                            <div class="tooltip-stat">
+                                <span>Unique Visitors:</span>
+                                <b>${data.unique.toLocaleString()}</b>
+                            </div>
+                        `;
+                        tooltip.style.display = 'block';
+                        
+                        // Position tooltip while keeping it in viewport
+                        const rect = tooltip.getBoundingClientRect();
+                        const x = Math.min(e.clientX + 15, window.innerWidth - rect.width - 10);
+                        const y = Math.min(e.clientY + 15, window.innerHeight - rect.height - 10);
+                        
+                        tooltip.style.left = `${x}px`;
+                        tooltip.style.top = `${y}px`;
+                    });
+
+                    path.addEventListener('mouseleave', () => {
+                        tooltip.style.display = 'none';
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error initializing map:', error);
+                const mapElement = document.getElementById(`map-${siteId}`);
+                mapElement.innerHTML = `
+                    <p style="color: red; padding: 20px;">
+                        Error loading map: ${error.message}. Please refresh the page.
+                    </p>`;
+            }
+        }
+
+        // Update maps periodically
+        setInterval(() => {
+            sites.forEach(initializeMap);
+        }, 10000);
+
+        // Initial load of sites with better error handling
+        async function initialize() {
+            try {
+                const response = await fetch('/sites');
+                if (!response.ok) throw new Error('Failed to fetch sites');
+                
+                const siteIds = await response.json();
+                sites = siteIds || [];
+                updateSitesList();
+                
+                if (sites.length === 0) {
+                    document.getElementById('sitesList').innerHTML = '<p>No sites yet. Create one to start tracking!</p>';
+                }
+            } catch (error) {
+                console.error('Error loading sites:', error);
+                document.getElementById('sitesList').innerHTML = '<p>Error loading sites. Please try again.</p>';
+            }
+        }
+
+        initialize();
+    </script>
+</body>
+</html>

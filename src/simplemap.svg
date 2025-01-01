@@ -1,0 +1,54 @@
+<svg viewBox="0 0 1000 500" xmlns="http://www.w3.org/2000/svg">
+    <!-- North America -->
+    <path id="US" class="country" data-name="United States" 
+        d="M 150 120 L 280 120 L 300 180 L 200 200 L 150 120" />
+    <path id="CA" class="country" data-name="Canada" 
+        d="M 150 50 L 280 50 L 280 120 L 150 120 L 150 50" />
+    
+    <!-- South America -->
+    <path id="BR" class="country" data-name="Brazil" 
+        d="M 250 280 L 300 280 L 320 350 L 270 380 L 250 280" />
+    
+    <!-- Europe -->
+    <path id="GB" class="country" data-name="United Kingdom" 
+        d="M 420 100 L 440 100 L 440 120 L 420 120 Z" />
+    <path id="FR" class="country" data-name="France" 
+        d="M 430 130 L 460 130 L 460 150 L 430 150 Z" />
+    <path id="CH" class="country" data-name="Switzerland" 
+        d="M 445 145 L 465 145 L 465 155 L 445 155 Z" />
+    <path id="DE" class="country" data-name="Germany" 
+        d="M 460 120 L 490 120 L 490 140 L 460 140 Z" />
+    
+    <!-- Asia -->
+    <path id="CN" class="country" data-name="China" 
+        d="M 650 150 L 750 150 L 750 220 L 650 220 Z" />
+    <path id="IN" class="country" data-name="India" 
+        d="M 620 200 L 670 200 L 670 250 L 620 250 Z" />
+    <path id="RU" class="country" data-name="Russia" 
+        d="M 500 50 L 800 50 L 800 150 L 500 150 Z" />
+    
+    <!-- Australia -->
+    <path id="AU" class="country" data-name="Australia" 
+        d="M 700 300 L 800 300 L 800 380 L 700 380 Z" />
+    
+    <!-- Africa -->
+    <path id="ZA" class="country" data-name="South Africa" 
+        d="M 480 300 L 520 300 L 520 350 L 480 350 Z" />
+    <path id="EG" class="country" data-name="Egypt" 
+        d="M 500 200 L 540 200 L 540 230 L 500 230 Z" />
+    
+    <style>
+        .country {
+            fill: #e4e4e4;
+            stroke: #333;
+            stroke-width: 1;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .country:hover {
+            fill: #bbb;
+            stroke-width: 2;
+            filter: brightness(0.9);
+        }
+    </style>
+</svg>

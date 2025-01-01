@@ -200,7 +200,7 @@ app.get('/track', async (req, res) => {
     }
 });
 
-// Update the tracker script to use correct protocol and host
+// Update the tracker script with IP geolocation 
 app.get('/tracker.js', (req, res) => {
     const siteId = req.query.siteId;
     const host = process.env.PROJECT_DOMAIN ? 

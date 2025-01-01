@@ -188,7 +188,10 @@
                 </div>
             `).join('');
             
-            sites.forEach(initializeMap);
+            sites.forEach(siteId => {
+                initializeMap(siteId);
+                initializeWebSocket(siteId);
+            });
             fetchVisitorCounts();
         }
 
@@ -272,10 +275,31 @@
             }
         }
 
-        // Update maps periodically
-        setInterval(() => {
-            sites.forEach(initializeMap);
-        }, 10000);
+        function initializeWebSocket(siteId) {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const ws = new WebSocket(`${protocol}//${window.location.host}?siteId=${siteId}`);
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'update') {
+                    // Update counters
+                    const totalElement = document.getElementById(`total-${siteId}`);
+                    const uniqueElement = document.getElementById(`unique-${siteId}`);
+                    if (totalElement && uniqueElement) {
+                        totalElement.textContent = data.stats.total;
+                        uniqueElement.textContent = data.stats.unique;
+                    }
+
+                    // Update map
+                    initializeMap(siteId);
+                }
+            };
+
+            ws.onclose = () => {
+                // Attempt to reconnect after 5 seconds
+                setTimeout(() => initializeWebSocket(siteId), 5000);
+            };
+        }
 
         // Initial load of sites with better error handling
         async function initialize() {

@@ -10,9 +10,11 @@
     "@supabase/supabase-js": "^2.x",
     "dotenv": "^16.x",
     "express": "^4.x",
-    "jsvectormap": "^1.6.0"
+    "jsvectormap": "^1.6.0",
+    "ws": "^8.x"
   },
   "engines": {
     "node": "16.x"
   }
 }
+
